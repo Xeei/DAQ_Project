@@ -16,7 +16,6 @@
     "d3": "^7.9.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "recharts": "^3.8.1",
     "uplot": "^1.6.32"
   },
   "devDependencies": {
