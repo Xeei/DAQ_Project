@@ -1,15 +1,16 @@
 {
-  "name": "backend",
+  "name": "munyin-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "REST API for Munyin sensor dashboard",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test": "jest"
   },
-  "keywords": [],
-  "author": "",
+  "jest": {
+    "testEnvironment": "node"
+  },
   "license": "ISC",
   "packageManager": "pnpm@10.26.2",
   "dependencies": {
