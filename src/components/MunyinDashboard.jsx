@@ -10,6 +10,7 @@ import UPlotChart from "./UPlotChart";
 // ── CONFIG ──────────────────────────────────────────────────────────────────
 // const API_BASE = "https://iot.cpe.ku.ac.th/red/b6710545849";
 const API_BASE = "http://localhost:3000/api";
+const POLL_INTERVAL = 60_000;
 
 
 // ── MOCK DATA (remove when real API is ready) ────────────────────────────────
@@ -174,29 +175,31 @@ const fetchStatus = async () => {
 export default function MunyinDashboard() {
   const [hours, setHours] = useState(24);
 
-  const { data: latest, dataUpdatedAt } = useQuery({
+  const { data: latest, dataUpdatedAt, isLoading: latestLoading } = useQuery({
     queryKey: ["latest"],
     queryFn: fetchLatest,
-    staleTime: 55_000,       // treat data as fresh for 55s (just under refetch interval)
-    gcTime: 5 * 60_000,      // keep in cache for 5 min after unmount
-    refetchInterval: 60_000,
+    staleTime: 55_000,
+    gcTime: 5 * 60_000,
+    refetchInterval: POLL_INTERVAL,
   });
 
-  const { data: historyData } = useQuery({
+  const { data: historyData, isLoading: historyLoading } = useQuery({
     queryKey: ["history", hours],
     queryFn: () => fetchHistory(hours),
     staleTime: 55_000,
-    gcTime: 10 * 60_000,     // history is heavier — keep longer
-    refetchInterval: 60_000,
+    gcTime: 10 * 60_000,
+    refetchInterval: POLL_INTERVAL,
   });
 
-  const { data: statusData, isLoading } = useQuery({
+  const { data: statusData, isLoading: statusLoading } = useQuery({
     queryKey: ["status"],
     queryFn: fetchStatus,
     staleTime: 55_000,
     gcTime: 5 * 60_000,
-    refetchInterval: 60_000,
+    refetchInterval: POLL_INTERVAL,
   });
+
+  const isLoading = latestLoading || historyLoading || statusLoading;
 
   const history = historyData?.data ?? [];
   const status = {
