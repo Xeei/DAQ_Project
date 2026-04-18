@@ -1,13 +1,16 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
-  LineChart, Line, AreaChart, Area,
+  LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceLine
+  ResponsiveContainer
 } from "recharts";
+import UPlotChart from "./UPlotChart";
 
 // ── CONFIG ──────────────────────────────────────────────────────────────────
-const API_BASE = "https://iot.cpe.ku.ac.th/red/b6710545849";
-const POLL_INTERVAL = 60000; // 1 minute
+// const API_BASE = "https://iot.cpe.ku.ac.th/red/b6710545849";
+const API_BASE = "http://localhost:3000/api";
+
 
 // ── MOCK DATA (remove when real API is ready) ────────────────────────────────
 const MOCK_LATEST = {
@@ -28,13 +31,26 @@ const MOCK_HISTORY = {
   }))
 };
 
+// ── THEME ─────────────────────────────────────────────────────────────────────
+const T = {
+  bg:        "#fdf8f2",
+  bgCard:    "#fffcf8",
+  bgCard2:   "#f8f1e8",
+  border:    "#e8d8c8",
+  borderSub: "#f0e4d4",
+  textPrimary:   "#2d2018",
+  textSecondary: "#7a6455",
+  textMuted:     "#a89080",
+  textFaint:     "#c8b4a0",
+};
+
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 const iuiColor = (v) => {
-  if (v < 0.2) return "#22c55e";
-  if (v < 0.4) return "#84cc16";
-  if (v < 0.6) return "#eab308";
-  if (v < 0.8) return "#f97316";
-  return "#ef4444";
+  if (v < 0.2) return "#3a9e60";
+  if (v < 0.4) return "#6aaa20";
+  if (v < 0.6) return "#c89010";
+  if (v < 0.8) return "#d46820";
+  return "#c83030";
 };
 const iuiLabel = (v) => {
   if (v < 0.2) return "No action needed";
@@ -55,11 +71,6 @@ function IUIGauge({ value }) {
     const rad = (deg * Math.PI) / 180;
     return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
   };
-  const arcPath = (start, end, col) => {
-    const s = toXY(start), e = toXY(end);
-    const large = end - start > 180 ? 1 : 0;
-    return `<path d="M ${s.x} ${s.y} A ${r} ${r} 0 ${large} 1 ${e.x} ${e.y}" stroke="${col}" stroke-width="10" fill="none" stroke-linecap="round"/>`;
-  };
   const needle = toXY(angle);
 
   return (
@@ -67,7 +78,7 @@ function IUIGauge({ value }) {
       {/* track */}
       <path
         d={`M ${toXY(-135).x} ${toXY(-135).y} A ${r} ${r} 0 1 1 ${toXY(135).x} ${toXY(135).y}`}
-        stroke="#1e293b" strokeWidth="10" fill="none" strokeLinecap="round"
+        stroke={T.border} strokeWidth="10" fill="none" strokeLinecap="round"
       />
       {/* colored arc */}
       {value > 0 && (
@@ -78,7 +89,7 @@ function IUIGauge({ value }) {
       )}
       {/* needle dot */}
       <circle cx={needle.x} cy={needle.y} r="5" fill={color} />
-      <circle cx={cx} cy={cy} r="4" fill="#94a3b8" />
+      <circle cx={cx} cy={cy} r="4" fill={T.textFaint} />
       {/* value text */}
       <text x={cx} y={cy + 22} textAnchor="middle" fill={color}
         style={{ fontSize: 22, fontWeight: 700, fontFamily: "monospace" }}>
@@ -92,17 +103,18 @@ function IUIGauge({ value }) {
 function MetricCard({ label, value, unit, sub, accent }) {
   return (
     <div style={{
-      background: "#0f172a", border: "1px solid #1e293b",
-      borderRadius: 12, padding: "14px 18px",
-      borderLeft: accent ? `3px solid ${accent}` : undefined
+      background: T.bgCard, border: `1px solid ${T.borderSub}`,
+      borderRadius: 14, padding: "14px 18px",
+      borderLeft: accent ? `3px solid ${accent}` : undefined,
+      boxShadow: "0 1px 6px rgba(180,140,100,0.07)"
     }}>
-      <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
+      <div style={{ fontSize: 11, color: T.textMuted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
         {label}
       </div>
-      <div style={{ fontSize: 26, fontWeight: 700, color: accent || "#f1f5f9", fontFamily: "monospace" }}>
-        {value}<span style={{ fontSize: 13, color: "#64748b", marginLeft: 4 }}>{unit}</span>
+      <div style={{ fontSize: 26, fontWeight: 700, color: accent || T.textPrimary, fontFamily: "monospace" }}>
+        {value}<span style={{ fontSize: 13, color: T.textMuted, marginLeft: 4 }}>{unit}</span>
       </div>
-      {sub && <div style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 11, color: T.textSecondary, marginTop: 4 }}>{sub}</div>}
     </div>
   );
 }
@@ -110,23 +122,23 @@ function MetricCard({ label, value, unit, sub, accent }) {
 // ── STATUS DOT ────────────────────────────────────────────────────────────────
 function StatusDot({ ok, label }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#64748b" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: T.textSecondary }}>
       <span style={{
         width: 7, height: 7, borderRadius: "50%",
-        background: ok ? "#22c55e" : "#ef4444",
-        boxShadow: ok ? "0 0 6px #22c55e" : "0 0 6px #ef4444"
+        background: ok ? "#3a9e60" : "#c83030",
+        boxShadow: ok ? "0 0 6px #3a9e6080" : "0 0 6px #c8303080"
       }} />
       {label}
     </div>
   );
 }
 
-// ── CUSTOM TOOLTIP ────────────────────────────────────────────────────────────
+// ── CUSTOM TOOLTIP (used by sensor LineCharts) ────────────────────────────────
 function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8, padding: "8px 12px", fontSize: 12 }}>
-      <div style={{ color: "#64748b", marginBottom: 4 }}>{label}</div>
+    <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 12px", fontSize: 12, boxShadow: "0 4px 16px rgba(180,140,100,0.15)" }}>
+      <div style={{ color: T.textMuted, marginBottom: 4 }}>{label}</div>
       {payload.map((p) => (
         <div key={p.name} style={{ color: p.color, display: "flex", gap: 8, justifyContent: "space-between" }}>
           <span>{p.name}</span><span style={{ fontWeight: 600 }}>{fmt(p.value, 2)}</span>
@@ -136,70 +148,92 @@ function ChartTooltip({ active, payload, label }) {
   );
 }
 
+// ── FETCH FUNCTIONS ───────────────────────────────────────────────────────────
+const fetchLatest = async () => {
+  if (USE_MOCK) return MOCK_LATEST;
+  const res = await fetch(`${API_BASE}/latest`);
+  if (!res.ok) throw new Error("Failed to fetch latest");
+  return res.json();
+};
+
+const fetchHistory = async (hours) => {
+  if (USE_MOCK) return MOCK_HISTORY;
+  const res = await fetch(`${API_BASE}/history?hours=${hours}`);
+  if (!res.ok) throw new Error("Failed to fetch history");
+  return res.json();
+};
+
+const fetchStatus = async () => {
+  if (USE_MOCK) return { sensor: "ok", tmd: "ok", aqi: "ok" };
+  const res = await fetch(`${API_BASE}/status`);
+  if (!res.ok) throw new Error("Failed to fetch status");
+  return res.json();
+};
+
 // ── MAIN DASHBOARD ────────────────────────────────────────────────────────────
 export default function MunyinDashboard() {
-  const [latest, setLatest] = useState(null);
-  const [history, setHistory] = useState([]);
-  const [status, setStatus] = useState({ sensor: false, tmd: false, aqi: false });
-  const [loading, setLoading] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState(null);
   const [hours, setHours] = useState(24);
 
-  const fetchData = useCallback(async () => {
-    if (USE_MOCK) {
-      setLatest(MOCK_LATEST);
-      setHistory(MOCK_HISTORY.data);
-      setStatus({ sensor: true, tmd: true, aqi: true });
-      setLastUpdate(new Date());
-      setLoading(false);
-      return;
-    }
-    try {
-      const [latRes, histRes, statRes] = await Promise.all([
-        fetch(`${API_BASE}/latest`),
-        fetch(`${API_BASE}/history?hours=${hours}`),
-        fetch(`${API_BASE}/status`),
-      ]);
-      const [lat, hist, stat] = await Promise.all([latRes.json(), histRes.json(), statRes.json()]);
-      setLatest(lat);
-      setHistory(hist.data);
-      setStatus({ sensor: stat.sensor === "ok", tmd: stat.tmd === "ok", aqi: stat.aqi === "ok" });
-      setLastUpdate(new Date());
-    } catch (e) {
-      console.error("Fetch error:", e);
-    } finally {
-      setLoading(false);
-    }
-  }, [hours]);
+  const { data: latest, dataUpdatedAt } = useQuery({
+    queryKey: ["latest"],
+    queryFn: fetchLatest,
+    staleTime: 55_000,       // treat data as fresh for 55s (just under refetch interval)
+    gcTime: 5 * 60_000,      // keep in cache for 5 min after unmount
+    refetchInterval: 60_000,
+  });
 
-  useEffect(() => { fetchData(); }, [fetchData]);
-  useEffect(() => {
-    const t = setInterval(fetchData, POLL_INTERVAL);
-    return () => clearInterval(t);
-  }, [fetchData]);
+  const { data: historyData } = useQuery({
+    queryKey: ["history", hours],
+    queryFn: () => fetchHistory(hours),
+    staleTime: 55_000,
+    gcTime: 10 * 60_000,     // history is heavier — keep longer
+    refetchInterval: 60_000,
+  });
 
-  if (loading) return (
-    <div style={{ minHeight: "100vh", background: "#020817", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", fontFamily: "monospace" }}>
-      initializing MUNYIN...
-    </div>
-  );
+  const { data: statusData, isLoading } = useQuery({
+    queryKey: ["status"],
+    queryFn: fetchStatus,
+    staleTime: 55_000,
+    gcTime: 5 * 60_000,
+    refetchInterval: 60_000,
+  });
+
+  const history = historyData?.data ?? [];
+  const status = {
+    sensor: statusData?.sensor === "ok",
+    tmd: statusData?.tmd === "ok",
+    aqi: statusData?.aqi === "ok",
+  };
+  const lastUpdate = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
 
   const iui = latest?.computed?.iui ?? 0;
   const color = iuiColor(iui);
 
+  const iuiYDomain = useMemo(() => [0, 1], []);
+  const iuiRefLines = useMemo(() => [
+    { y: 0.6, color: "#c83030" },
+    { y: 0.4, color: "#c89010" },
+  ], []);
+
+  if (isLoading) return (
+    <div style={{ minHeight: "100vh", background: T.bg, display: "flex", alignItems: "center", justifyContent: "center", color: T.textMuted, fontFamily: "monospace" }}>
+      initializing MUNYIN...
+    </div>
+  );
+
   return (
-    <div style={{ minHeight: "100vh", background: "#020817", color: "#f1f5f9", fontFamily: "'IBM Plex Mono', monospace", padding: "24px 20px" }}>
+    <div style={{ minHeight: "100vh", background: T.bg, color: T.textPrimary, fontFamily: "'IBM Plex Mono', monospace", padding: "28px 24px" }}>
       <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet" />
 
       {/* ── HEADER ── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 28, flexWrap: "wrap", gap: 12 }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 11, background: "#052e16", color: "#22c55e", padding: "2px 8px", borderRadius: 4, letterSpacing: 2 }}>LIVE</span>
-            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, letterSpacing: 2 }}>MUNYIN</h1>
+            <span style={{ fontSize: 11, background: "#e8f5ee", color: "#3a9e60", padding: "2px 10px", borderRadius: 6, letterSpacing: 2, border: "1px solid #c0e4cc" }}>LIVE</span>
+            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, letterSpacing: 2, color: T.textPrimary }}>MUNYIN</h1>
           </div>
-          <p style={{ fontSize: 11, color: "#475569", margin: "4px 0 0", letterSpacing: 1 }}>
-            MICRO-ENVIRONMENT UNIFIED NETWORK FOR YIELD IRRIGATION NAVIGATION
+          <p style={{ fontSize: 11, color: T.textMuted, margin: "5px 0 0", letterSpacing: 0.8 }}>
+            Micro-Environment Unified Network for Yield Irrigation Navigation
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
@@ -209,7 +243,7 @@ export default function MunyinDashboard() {
             <StatusDot ok={status.aqi} label="AQI" />
           </div>
           {lastUpdate && (
-            <span style={{ fontSize: 10, color: "#334155" }}>
+            <span style={{ fontSize: 10, color: T.textFaint }}>
               updated {lastUpdate.toLocaleTimeString()}
             </span>
           )}
@@ -218,18 +252,19 @@ export default function MunyinDashboard() {
 
       {/* ── IUI HERO ── */}
       <div style={{
-        background: "#0a0f1e", border: `1px solid ${color}22`,
-        borderRadius: 16, padding: "24px 28px", marginBottom: 20,
-        display: "grid", gridTemplateColumns: "auto 1fr", gap: 28, alignItems: "center"
+        background: T.bgCard, border: `1px solid ${T.border}`,
+        borderRadius: 18, padding: "24px 28px", marginBottom: 20,
+        display: "grid", gridTemplateColumns: "auto 1fr", gap: 28, alignItems: "center",
+        boxShadow: "0 2px 12px rgba(180,140,100,0.09)"
       }}>
         <div style={{ textAlign: "center" }}>
           <IUIGauge value={iui} />
-          <div style={{ fontSize: 13, color, fontWeight: 600, marginTop: 4, letterSpacing: 1 }}>
-            {iuiLabel(iui).toUpperCase()}
+          <div style={{ fontSize: 13, color, fontWeight: 600, marginTop: 4, letterSpacing: 0.8 }}>
+            {iuiLabel(iui)}
           </div>
         </div>
         <div>
-          <div style={{ fontSize: 11, color: "#475569", letterSpacing: 2, marginBottom: 12 }}>IUI BREAKDOWN</div>
+          <div style={{ fontSize: 11, color: T.textMuted, letterSpacing: 1.5, marginBottom: 12, textTransform: "uppercase" }}>IUI Breakdown</div>
           {[
             { label: "Soil score", value: latest?.computed?.soil_score, bar: true },
             { label: "VPD score", value: latest?.computed?.vpd_score, bar: true },
@@ -237,26 +272,26 @@ export default function MunyinDashboard() {
             { label: "AQI factor", value: latest?.computed?.aqi_factor, bar: true },
           ].map(({ label, value, invert }) => (
             <div key={label} style={{ marginBottom: 10 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#64748b", marginBottom: 3 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: T.textSecondary, marginBottom: 3 }}>
                 <span>{label}</span>
-                <span style={{ fontFamily: "monospace", color: "#94a3b8" }}>{fmt(value, 3)}</span>
+                <span style={{ fontFamily: "monospace", color: T.textMuted }}>{fmt(value, 3)}</span>
               </div>
-              <div style={{ background: "#1e293b", borderRadius: 4, height: 5 }}>
+              <div style={{ background: T.bgCard2, borderRadius: 4, height: 5 }}>
                 <div style={{
                   width: `${(value ?? 0) * 100}%`, height: "100%", borderRadius: 4,
-                  background: invert ? "#22c55e" : color, transition: "width 0.6s ease"
+                  background: invert ? "#3a9e60" : color, transition: "width 0.6s ease"
                 }} />
               </div>
             </div>
           ))}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 16 }}>
-            <div style={{ fontSize: 11, color: "#475569" }}>VPD
-              <span style={{ display: "block", fontSize: 18, color: "#f1f5f9", fontWeight: 700 }}>
+            <div style={{ fontSize: 11, color: T.textSecondary }}>VPD
+              <span style={{ display: "block", fontSize: 18, color: T.textPrimary, fontWeight: 700 }}>
                 {fmt(latest?.computed?.vpd, 3)} <span style={{ fontSize: 11, fontWeight: 400 }}>kPa</span>
               </span>
             </div>
-            <div style={{ fontSize: 11, color: "#475569" }}>Soil moisture
-              <span style={{ display: "block", fontSize: 18, color: "#f1f5f9", fontWeight: 700 }}>
+            <div style={{ fontSize: 11, color: T.textSecondary }}>Soil moisture
+              <span style={{ display: "block", fontSize: 18, color: T.textPrimary, fontWeight: 700 }}>
                 {fmt(latest?.sensor?.soil_moisture, 1)} <span style={{ fontSize: 11, fontWeight: 400 }}>%</span>
               </span>
             </div>
@@ -266,63 +301,56 @@ export default function MunyinDashboard() {
 
       {/* ── SENSOR METRICS ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 20 }}>
-        <MetricCard label="Temperature" value={fmt(latest?.sensor?.temperature, 1)} unit="°C" accent="#f97316" />
-        <MetricCard label="Humidity" value={fmt(latest?.sensor?.humidity, 0)} unit="%" accent="#38bdf8" />
-        <MetricCard label="AQI" value={fmt(latest?.aqi?.aqi, 0)} unit="" sub={`PM2.5: ${fmt(latest?.aqi?.pm25, 0)} · PM10: ${fmt(latest?.aqi?.pm10, 0)}`} accent="#a78bfa" />
-        <MetricCard label="Outdoor Temp" value={fmt(latest?.weather?.air_temperature, 1)} unit="°C" sub={`Dew: ${fmt(latest?.weather?.dew_point, 1)}°C`} accent="#fb7185" />
-        <MetricCard label="Rain 24hr" value={fmt(latest?.weather?.rainfall_24hr, 1)} unit="mm" accent="#22c55e" />
+        <MetricCard label="Temperature" value={fmt(latest?.sensor?.temperature, 1)} unit="°C" accent="#d46820" />
+        <MetricCard label="Humidity" value={fmt(latest?.sensor?.humidity, 0)} unit="%" accent="#3a8abf" />
+        <MetricCard label="AQI" value={fmt(latest?.aqi?.aqi, 0)} unit="" sub={`PM2.5: ${fmt(latest?.aqi?.pm25, 0)} · PM10: ${fmt(latest?.aqi?.pm10, 0)}`} accent="#7c60c0" />
+        <MetricCard label="Outdoor Temp" value={fmt(latest?.weather?.air_temperature, 1)} unit="°C" sub={`Dew: ${fmt(latest?.weather?.dew_point, 1)}°C`} accent="#c0505a" />
+        <MetricCard label="Rain 24hr" value={fmt(latest?.weather?.rainfall_24hr, 1)} unit="mm" accent="#3a9e60" />
       </div>
 
       {/* ── CHARTS ── */}
-      <div style={{ background: "#0a0f1e", border: "1px solid #1e293b", borderRadius: 16, padding: "20px 24px", marginBottom: 20 }}>
+      <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: 18, padding: "20px 24px", marginBottom: 20, boxShadow: "0 2px 12px rgba(180,140,100,0.09)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-          <div style={{ fontSize: 11, color: "#475569", letterSpacing: 2 }}>IUI TREND</div>
+          <div style={{ fontSize: 11, color: T.textMuted, letterSpacing: 1.5, textTransform: "uppercase" }}>IUI Trend</div>
           <div style={{ display: "flex", gap: 8 }}>
             {[6, 24, 48, 168].map(h => (
               <button key={h} onClick={() => setHours(h)} style={{
-                fontSize: 11, padding: "3px 10px", borderRadius: 6, cursor: "pointer",
-                background: hours === h ? "#1e40af" : "transparent",
-                border: `1px solid ${hours === h ? "#3b82f6" : "#1e293b"}`,
-                color: hours === h ? "#93c5fd" : "#475569"
+                fontSize: 11, padding: "3px 10px", borderRadius: 8, cursor: "pointer",
+                background: hours === h ? "#e8f0fb" : "transparent",
+                border: `1px solid ${hours === h ? "#9ab8e8" : T.border}`,
+                color: hours === h ? "#3a5fa0" : T.textSecondary,
+                fontFamily: "inherit"
               }}>
                 {h < 48 ? `${h}h` : h === 168 ? "7d" : `${h}h`}
               </button>
             ))}
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={180}>
-          <AreaChart data={history} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="iuiGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={color} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={color} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid stroke="#0f172a" vertical={false} />
-            <XAxis dataKey="ts" tick={{ fontSize: 10, fill: "#334155" }} tickLine={false} axisLine={false} />
-            <YAxis domain={[0, 1]} tick={{ fontSize: 10, fill: "#334155" }} tickLine={false} axisLine={false} />
-            <Tooltip content={<ChartTooltip />} />
-            <ReferenceLine y={0.6} stroke="#ef4444" strokeDasharray="4 4" strokeOpacity={0.4} />
-            <ReferenceLine y={0.4} stroke="#eab308" strokeDasharray="4 4" strokeOpacity={0.4} />
-            <Area type="monotone" dataKey="iui" name="IUI" stroke={color} fill="url(#iuiGrad)" strokeWidth={2} dot={false} />
-          </AreaChart>
-        </ResponsiveContainer>
+        <UPlotChart
+          data={history}
+          valueKey="iui"
+          height={180}
+          color={color}
+          yDomain={iuiYDomain}
+          fill={true}
+          refLines={iuiRefLines}
+        />
       </div>
 
       {/* ── SENSOR CHARTS ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
         {[
-          { key: "soil_moisture", label: "SOIL MOISTURE", unit: "%", color: "#22c55e", domain: [0, 100] },
-          { key: "vpd", label: "VPD", unit: "kPa", color: "#f97316", domain: [0, 3] },
+          { key: "soil_moisture", label: "Soil Moisture", unit: "%", color: "#3a9e60", domain: [0, 100] },
+          { key: "vpd", label: "VPD", unit: "kPa", color: "#d46820", domain: [0, 3] },
         ].map(({ key, label, color: c, domain }) => (
-          <div key={key} style={{ background: "#0a0f1e", border: "1px solid #1e293b", borderRadius: 16, padding: "16px 20px" }}>
-            <div style={{ fontSize: 11, color: "#475569", letterSpacing: 2, marginBottom: 12 }}>{label}</div>
+          <div key={key} style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: 18, padding: "16px 20px", boxShadow: "0 2px 12px rgba(180,140,100,0.09)" }}>
+            <div style={{ fontSize: 11, color: T.textMuted, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12 }}>{label}</div>
             <ResponsiveContainer width="100%" height={120}>
               <LineChart data={history} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
-                <CartesianGrid stroke="#0f172a" vertical={false} />
-                <XAxis dataKey="ts" tick={{ fontSize: 9, fill: "#334155" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                <YAxis domain={domain} tick={{ fontSize: 9, fill: "#334155" }} tickLine={false} axisLine={false} />
-                <Tooltip content={<ChartTooltip />} />
+                <CartesianGrid stroke={T.bgCard2} vertical={false} />
+                <XAxis dataKey="ts" tick={{ fontSize: 9, fill: T.textFaint }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                <YAxis domain={domain} tick={{ fontSize: 9, fill: T.textFaint }} tickLine={false} axisLine={false} />
+                <Tooltip content={ChartTooltip} />
                 <Line type="monotone" dataKey={key} name={label} stroke={c} strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
@@ -331,7 +359,7 @@ export default function MunyinDashboard() {
       </div>
 
       {/* ── FOOTER ── */}
-      <div style={{ textAlign: "center", fontSize: 10, color: "#1e293b", letterSpacing: 2 }}>
+      <div style={{ textAlign: "center", fontSize: 10, color: T.textFaint, letterSpacing: 1.5, marginTop: 8 }}>
         MUNYIN · KIDBRIGHT32 · ESP32-WROOM-32 · {new Date().getFullYear()}
       </div>
     </div>
