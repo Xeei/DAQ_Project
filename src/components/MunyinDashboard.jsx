@@ -1,10 +1,5 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  LineChart, Line,
-  XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer
-} from "recharts";
 import UPlotChart from "./UPlotChart";
 
 // ── CONFIG ──────────────────────────────────────────────────────────────────
@@ -134,20 +129,6 @@ function StatusDot({ ok, label }) {
   );
 }
 
-// ── CUSTOM TOOLTIP (used by sensor LineCharts) ────────────────────────────────
-function ChartTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: 10, padding: "8px 12px", fontSize: 12, boxShadow: "0 4px 16px rgba(180,140,100,0.15)" }}>
-      <div style={{ color: T.textMuted, marginBottom: 4 }}>{label}</div>
-      {payload.map((p) => (
-        <div key={p.name} style={{ color: p.color, display: "flex", gap: 8, justifyContent: "space-between" }}>
-          <span>{p.name}</span><span style={{ fontWeight: 600 }}>{fmt(p.value, 2)}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // ── FETCH FUNCTIONS ───────────────────────────────────────────────────────────
 const fetchLatest = async () => {
@@ -217,6 +198,8 @@ export default function MunyinDashboard() {
     { y: 0.6, color: "#c83030" },
     { y: 0.4, color: "#c89010" },
   ], []);
+  const soilYDomain = useMemo(() => [0, 100], []);
+  const vpdYDomain = useMemo(() => [0, 3], []);
 
   if (isLoading) return (
     <div style={{ minHeight: "100vh", background: T.bg, display: "flex", alignItems: "center", justifyContent: "center", color: T.textMuted, fontFamily: "monospace" }}>
@@ -342,23 +325,26 @@ export default function MunyinDashboard() {
 
       {/* ── SENSOR CHARTS ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-        {[
-          { key: "soil_moisture", label: "Soil Moisture", unit: "%", color: "#3a9e60", domain: [0, 100] },
-          { key: "vpd", label: "VPD", unit: "kPa", color: "#d46820", domain: [0, 3] },
-        ].map(({ key, label, color: c, domain }) => (
-          <div key={key} style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: 18, padding: "16px 20px", boxShadow: "0 2px 12px rgba(180,140,100,0.09)" }}>
-            <div style={{ fontSize: 11, color: T.textMuted, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12 }}>{label}</div>
-            <ResponsiveContainer width="100%" height={120}>
-              <LineChart data={history} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
-                <CartesianGrid stroke={T.bgCard2} vertical={false} />
-                <XAxis dataKey="ts" tick={{ fontSize: 9, fill: T.textFaint }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-                <YAxis domain={domain} tick={{ fontSize: 9, fill: T.textFaint }} tickLine={false} axisLine={false} />
-                <Tooltip content={ChartTooltip} />
-                <Line type="monotone" dataKey={key} name={label} stroke={c} strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        ))}
+        <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: 18, padding: "16px 20px", boxShadow: "0 2px 12px rgba(180,140,100,0.09)" }}>
+          <div style={{ fontSize: 11, color: T.textMuted, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12 }}>Soil Moisture</div>
+          <UPlotChart
+            data={history}
+            valueKey="soil_moisture"
+            height={120}
+            color="#3a9e60"
+            yDomain={soilYDomain}
+          />
+        </div>
+        <div style={{ background: T.bgCard, border: `1px solid ${T.border}`, borderRadius: 18, padding: "16px 20px", boxShadow: "0 2px 12px rgba(180,140,100,0.09)" }}>
+          <div style={{ fontSize: 11, color: T.textMuted, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 12 }}>VPD</div>
+          <UPlotChart
+            data={history}
+            valueKey="vpd"
+            height={120}
+            color="#d46820"
+            yDomain={vpdYDomain}
+          />
+        </div>
       </div>
 
       {/* ── FOOTER ── */}
