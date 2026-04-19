@@ -68,6 +68,12 @@ Frontend runs at `http://localhost:5173`
 
 ---
 
+## Primary Data
+KidBright board collects soil moisture (ZX-SOIL) and temp/humidity (KY-015) every 10 minutes → MQTT (topic: /b6710545849/MUNYIN/status) → Node Red →  pushed to MySQL database
+
+## Secondary Data
+Node Red 1 hour interval → collect data from tmd.go.th (rain probability) and aqicn.org (AQI) used as adjustment coefficients in the IUI formula
+
 ## API Endpoints
 
 | Method | Path | Description | Params |
