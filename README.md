@@ -1,16 +1,77 @@
-# React + Vite
+# Munyin Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Sensor monitoring dashboard for Munyin station. React + Vite frontend, Express + MySQL backend.
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node.js 18+
+- pnpm (`npm install -g pnpm`)
+- MySQL/MariaDB with access to `munyin_sensors`, `munyin_tmd`, `munyin_aqi` tables
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Backend Setup
 
-## Expanding the ESLint configuration
+```bash
+cd backend
+pnpm install
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Copy and fill in env:
+
+```bash
+cp .env.example .env
+```
+
+Edit `backend/.env`:
+
+```env
+PORT=3000
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+DB_NAME=your_db_name
+```
+
+Start dev server:
+
+```bash
+pnpm dev
+```
+
+Or production:
+
+```bash
+pnpm start
+```
+
+Run tests:
+
+```bash
+pnpm test
+```
+
+Backend runs at `http://localhost:3000`
+
+---
+
+## Frontend Setup
+
+```bash
+# from project root
+pnpm install
+pnpm dev
+```
+
+Frontend runs at `http://localhost:5173`
+
+---
+
+## API Endpoints
+
+| Method | Path | Description | Params |
+|--------|------|-------------|--------|
+| GET | `/api/latest` | Latest sensor + weather + AQI + computed metrics | — |
+| GET | `/api/history` | Historical sensor data | `?hours=24` |
+| GET | `/api/status` | Health check for all data sources | — |
