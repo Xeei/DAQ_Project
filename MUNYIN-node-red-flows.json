@@ -1,0 +1,594 @@
+[
+    {
+        "id": "93bffb9d8046e336",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "c8f9603cc8dfaf72",
+        "type": "group",
+        "z": "93bffb9d8046e336",
+        "name": "Store Data",
+        "style": {
+            "label": true
+        },
+        "nodes": [
+            "974acc3e6ce31d81",
+            "81812b9e52174c8b",
+            "302b52f077ab0d2e",
+            "08bf30bc409d06b0",
+            "a726844b09193ccd",
+            "2e046c489474c770",
+            "c14f89749e75611b",
+            "c189d446618868fb",
+            "e36b57197f02cfd4",
+            "28c6841f5ae4a029",
+            "3b47595cd84be0c4",
+            "0f440a3b8192dde7",
+            "897c708f336392b3",
+            "056a52260d80ec94",
+            "1a032cd919a7bb09",
+            "a9450f0d95d9adfa",
+            "67023924720befa9",
+            "4be29e2c4bc4473b",
+            "f604933dff77c64e",
+            "31370d174399deec",
+            "8d2eeda591921f05"
+        ],
+        "x": 574,
+        "y": 239,
+        "w": 1232,
+        "h": 742
+    },
+    {
+        "id": "974acc3e6ce31d81",
+        "type": "mqtt in",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "name": "b6710545849/MUNYIN/status",
+        "topic": "b6710545849/MUNYIN/status",
+        "qos": "0",
+        "datatype": "json",
+        "broker": "a74bc79c70d67906",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 740,
+        "y": 440,
+        "wires": [
+            [
+                "81812b9e52174c8b"
+            ]
+        ]
+    },
+    {
+        "id": "81812b9e52174c8b",
+        "type": "function",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "name": "Make sql insert STATUS",
+        "func": "const data = msg.payload;\n\n// {\"humidity\": 44, \"temperature\": 25, \"soil_moisture\": 0.0, \"soil_raw\": 4095}\nconst sql = `\nINSERT INTO munyin_sensors(\n    humidity, \n    temperature, \n    soil_moisture,\n    soil_raw\n) \nVALUES (\n    ${data.humidity},\n    ${data.temperature},\n    ${data.soil_moisture},\n    ${data.soil_raw}\n)\n`\n\nmsg.topic = sql;\n\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1210,
+        "y": 440,
+        "wires": [
+            [
+                "a726844b09193ccd"
+            ]
+        ]
+    },
+    {
+        "id": "302b52f077ab0d2e",
+        "type": "mysql",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "mydb": "2c210b0e6b3163cd",
+        "name": "",
+        "x": 1700,
+        "y": 540,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "08bf30bc409d06b0",
+        "type": "inject",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "{\"humidity\":123,\"temperature\":321,\"moiseture\":888}",
+        "payloadType": "json",
+        "x": 810,
+        "y": 360,
+        "wires": [
+            [
+                "81812b9e52174c8b"
+            ]
+        ]
+    },
+    {
+        "id": "a726844b09193ccd",
+        "type": "delay",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "name": "",
+        "pauseType": "rate",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1490,
+        "y": 540,
+        "wires": [
+            [
+                "302b52f077ab0d2e"
+            ]
+        ]
+    },
+    {
+        "id": "2e046c489474c770",
+        "type": "http request",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "name": "Weather3Hours",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://data.tmd.go.th/api/Weather3Hours/V2/?uid=api&ukey=api12345&format=json",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 920,
+        "y": 540,
+        "wires": [
+            [
+                "c14f89749e75611b",
+                "3b47595cd84be0c4"
+            ]
+        ]
+    },
+    {
+        "id": "c14f89749e75611b",
+        "type": "function",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "name": "Make sql insert Weather3Hour",
+        "func": "// \"WmoStationNumber\": \"48429\",\nconst filtered_station = msg.payload.Stations.Station.filter(el => el.WmoStationNumber == \"48429\")\nconst sel_station = filtered_station[0].Observation\nmsg.topic = `\n    INSERT INTO munyin_tmd(\n    StationPressure,\n    MeanSeaLevelPressure,\n    AirTemperature,\n    DewPoint,\n    RelativeHumidity,\n    VaporPressure,\n    LandVisibility,\n    WindDirection,\n    WindSpeed,\n    Rainfall,\n    Rainfall24Hr\n) VALUES (\n    ${sel_station.StationPressure},\n    ${sel_station.MeanSeaLevelPressure},\n    ${sel_station.AirTemperature},\n    ${sel_station.DewPoint},\n    ${sel_station.RelativeHumidity},\n    ${sel_station.VaporPressure},\n    ${sel_station.LandVisibility},\n    ${sel_station.WindDirection},\n    ${sel_station.WindSpeed},\n    ${sel_station.Rainfall},\n    ${sel_station.Rainfall24Hr}\n)\n`\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1230,
+        "y": 540,
+        "wires": [
+            [
+                "a726844b09193ccd"
+            ]
+        ]
+    },
+    {
+        "id": "c189d446618868fb",
+        "type": "http request",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "name": "feed samut prakan",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://api.waqi.info/feed/A548599/?token=47e4388979ee7b24a30c6bb8fd32d26aee2ddb11",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 930,
+        "y": 660,
+        "wires": [
+            [
+                "28c6841f5ae4a029",
+                "0f440a3b8192dde7"
+            ]
+        ]
+    },
+    {
+        "id": "e36b57197f02cfd4",
+        "type": "inject",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "name": "1 hour interval",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "3600",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 700,
+        "y": 600,
+        "wires": [
+            [
+                "c189d446618868fb",
+                "2e046c489474c770",
+                "8d2eeda591921f05"
+            ]
+        ]
+    },
+    {
+        "id": "28c6841f5ae4a029",
+        "type": "function",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "name": "Make sql insert feed",
+        "func": "const {h, t, pm10, pm25} = msg.payload.data.iaqi\nconst {aqi} = msg.payload.data\nconst sql = `\nINSERT INTO munyin_aqi(\n    aqi, \n    h, \n    t, \n    pm10, \n    pm25\n) \nVALUES (\n    ${aqi},\n    ${h.v},\n    ${t.v},\n    ${pm10.v},\n    ${pm25.v}\n)\n`\n\nmsg.topic = sql;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1200,
+        "y": 660,
+        "wires": [
+            [
+                "a726844b09193ccd"
+            ]
+        ]
+    },
+    {
+        "id": "3b47595cd84be0c4",
+        "type": "debug",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "name": "debug 1",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1160,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "0f440a3b8192dde7",
+        "type": "debug",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "name": "debug 2",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1160,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "897c708f336392b3",
+        "type": "mqtt in",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "name": "",
+        "topic": "b6710545849/MUNYIN/health",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "a74bc79c70d67906",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 980,
+        "y": 280,
+        "wires": [
+            [
+                "056a52260d80ec94"
+            ]
+        ]
+    },
+    {
+        "id": "056a52260d80ec94",
+        "type": "function",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "name": "Make Insert health",
+        "func": "const data = msg.payload\n\nconst sql = `\nINSERT INTO munyin_health(\n    uptime_s,\n    free_mem,\n    rssi,\n    wifi,\n    dht11_ok,\n    soil_ok,\n    err_count\n) VALUES (\n    ${data.uptime_s},\n    ${data.free_mem},\n    ${data.rssi},\n    ${data.wifi},\n    ${data.dht11_ok},\n    ${data.soil_ok},\n    ${data.err_count}\n)\n`\n\nmsg.topic = sql;\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1230,
+        "y": 360,
+        "wires": [
+            [
+                "a726844b09193ccd"
+            ]
+        ]
+    },
+    {
+        "id": "1a032cd919a7bb09",
+        "type": "function",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "name": "function 1",
+        "func": "\n\nconst sql = `\n    SELECT *\n    FROM munyin_sensors\n`\nmsg.topic = sql\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 860,
+        "y": 860,
+        "wires": [
+            [
+                "a9450f0d95d9adfa"
+            ]
+        ]
+    },
+    {
+        "id": "a9450f0d95d9adfa",
+        "type": "delay",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "name": "",
+        "pauseType": "rate",
+        "timeout": "5",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 1030,
+        "y": 860,
+        "wires": [
+            [
+                "4be29e2c4bc4473b"
+            ]
+        ]
+    },
+    {
+        "id": "67023924720befa9",
+        "type": "ui_chart",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "name": "",
+        "group": "7bf9e55fc3654841",
+        "order": 0,
+        "width": 0,
+        "height": 0,
+        "label": "chart",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 1590,
+        "y": 860,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "4be29e2c4bc4473b",
+        "type": "mysql",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "mydb": "2c210b0e6b3163cd",
+        "name": "",
+        "x": 1220,
+        "y": 860,
+        "wires": [
+            [
+                "f604933dff77c64e",
+                "31370d174399deec"
+            ]
+        ]
+    },
+    {
+        "id": "f604933dff77c64e",
+        "type": "function",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "name": "function 2",
+        "func": "// [{\n// \"series\": [\"A\", \"B\", \"C\"],\n// \"data\": [\n//     [{ \"x\": 1504029632890, \"y\": 5 },\n//      { \"x\": 1504029636001, \"y\": 4 },\n//      { \"x\": 1504029638656, \"y\": 2 }\n//     ],\n//     [{ \"x\": 1504029633514, \"y\": 6 },\n//      { \"x\": 1504029636622, \"y\": 7 },\n//      { \"x\": 1504029639539, \"y\": 6 }\n//     ],\n//     [{ \"x\": 1504029634400, \"y\": 7 },\n//      { \"x\": 1504029637959, \"y\": 7 },\n//      { \"x\": 1504029640317, \"y\": 7 }\n//     ]\n// ],\n// \"labels\": [\"\"]\n// }]\nconst data = msg.payload\nconst data_set = data.map(el => {\n    return {\n        \"x\": el.ts,\n        \"y\": el.humidity\n    }\n})\nconst new_data = [\n    {\n        \"series\": [\"Timeline\"],\n        \"data\": [\n            data_set\n        ]\n    }\n]\n\nmsg.payload = new_data\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1420,
+        "y": 860,
+        "wires": [
+            [
+                "67023924720befa9"
+            ]
+        ]
+    },
+    {
+        "id": "31370d174399deec",
+        "type": "debug",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "name": "debug 3",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1440,
+        "y": 940,
+        "wires": []
+    },
+    {
+        "id": "8d2eeda591921f05",
+        "type": "delay",
+        "z": "93bffb9d8046e336",
+        "g": "c8f9603cc8dfaf72",
+        "name": "",
+        "pauseType": "delay",
+        "timeout": "2",
+        "timeoutUnits": "minutes",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 820,
+        "y": 760,
+        "wires": [
+            [
+                "1a032cd919a7bb09"
+            ]
+        ]
+    },
+    {
+        "id": "a74bc79c70d67906",
+        "type": "mqtt-broker",
+        "name": "iot.cpe.ku.ac.th",
+        "broker": "iot.cpe.ku.ac.th",
+        "port": 1883,
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": 4,
+        "keepalive": 60,
+        "cleansession": true,
+        "autoUnsubscribe": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthRetain": "false",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closeRetain": "false",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willRetain": "false",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "2c210b0e6b3163cd",
+        "type": "MySQLdatabase",
+        "name": "iot.cpe.ku.ac.th",
+        "host": "iot.cpe.ku.ac.th",
+        "port": "3306",
+        "db": "b6710545849",
+        "tz": "",
+        "charset": "UTF8"
+    },
+    {
+        "id": "7bf9e55fc3654841",
+        "type": "ui_group",
+        "name": "Default",
+        "tab": "fb18bebb1f02f9df",
+        "order": 1,
+        "disp": true,
+        "width": 6,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "fb18bebb1f02f9df",
+        "type": "ui_tab",
+        "name": "Home",
+        "icon": "dashboard",
+        "order": 1,
+        "disabled": false,
+        "hidden": false
+    }
+]
