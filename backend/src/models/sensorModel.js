@@ -90,7 +90,7 @@ async function getHistory(hours) {
     FROM munyin_sensors s
     JOIN munyin_tmd w ON DATE(s.ts) = DATE(w.ts)
     JOIN munyin_aqi a ON DATE(s.ts) = DATE(a.ts)
-    WHERE s.ts >= NOW() - INTERVAL ? HOUR
+    WHERE s.ts >= (select ts from munyin_sensors order by ts desc limit 1) - INTERVAL ? HOUR
     ORDER BY s.ts ASC
   `, [hours]);
   return rows;
@@ -99,21 +99,21 @@ async function getHistory(hours) {
 async function getStatus() {
   const [[sensor]] = await pool.query(`
     SELECT
-      CASE WHEN MAX(ts) >= NOW() - INTERVAL 20 MINUTE
+      CASE WHEN MAX(ts) >= (SELECT ts from munyin_sensors order by ts desc limit 1) - INTERVAL 20 MINUTE
         THEN 'ok' ELSE 'error'
       END AS sensor_status
     FROM munyin_sensors
   `);
   const [[tmd]] = await pool.query(`
     SELECT
-      CASE WHEN MAX(ts) >= NOW() - INTERVAL 2 HOUR
+      CASE WHEN MAX(ts) >= (SELECT ts from munyin_tmd order by ts desc limit 1) - INTERVAL 2 HOUR
         THEN 'ok' ELSE 'error'
       END AS tmd_status
     FROM munyin_tmd
   `);
   const [[aqi]] = await pool.query(`
     SELECT
-      CASE WHEN MAX(ts) >= NOW() - INTERVAL 2 HOUR
+      CASE WHEN MAX(ts) >= (SELECT ts from munyin_aqi order by ts desc limit 1) - INTERVAL 2 HOUR
         THEN 'ok' ELSE 'error'
       END AS aqi_status
     FROM munyin_aqi
