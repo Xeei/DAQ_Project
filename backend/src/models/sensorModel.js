@@ -3,10 +3,10 @@ const pool = require('../config/db');
 async function getLatest() {
   const [rows] = await pool.query(`
     SELECT
-      s.ts,
-      s.temperature,
-      s.humidity,
-      s.soil_moisture,
+      c.ts,
+      c.temperature,
+      c.humidity,
+      c.soil_moisture,
       s.soil_raw,
       w.AirTemperature                                              AS air_temperature,
       w.DewPoint                                                    AS dew_point,
@@ -15,15 +15,9 @@ async function getLatest() {
       a.aqi,
       a.pm25,
       a.pm10,
-      ROUND(
-        0.6108 * EXP((17.27 * s.temperature) / (s.temperature + 237.3))
-        * (1 - s.humidity / 100.0)
-      , 3)                                                          AS vpd,
-      ROUND(1.0 - (s.soil_moisture / 100.0), 3)                    AS soil_score,
-      ROUND(LEAST(1.0,
-        (0.6108 * EXP((17.27 * s.temperature) / (s.temperature + 237.3))
-        * (1 - s.humidity / 100.0)) / 3.0
-      ), 3)                                                         AS vpd_score,
+      c.vpd,
+      ROUND(1.0 - (c.soil_moisture / 100.0), 3)                    AS soil_score,
+      ROUND(LEAST(1.0, c.vpd / 3.0), 3)                            AS vpd_score,
       ROUND(GREATEST(0.0, LEAST(1.0,
         CASE
           WHEN w.Rainfall24Hr > 0
@@ -33,27 +27,12 @@ async function getLatest() {
         END
       )), 3)                                                        AS rain_factor,
       ROUND(LEAST(1.0, a.aqi / 200.0), 3)                          AS aqi_factor,
-      ROUND((
-        0.6 * (1.0 - (s.soil_moisture / 100.0))
-        + 0.4 * LEAST(1.0,
-          (0.6108 * EXP((17.27 * s.temperature) / (s.temperature + 237.3))
-          * (1 - s.humidity / 100.0)) / 3.0
-        )
-      )
-      * GREATEST(0.0, LEAST(1.0,
-        CASE
-          WHEN w.Rainfall24Hr > 0
-            THEN 1.0 - LEAST(1.0, w.Rainfall24Hr / 20.0)
-          ELSE
-            (w.AirTemperature - w.DewPoint) / 10.0
-        END
-      ))
-      * LEAST(1.0, a.aqi / 200.0)
-      , 3)                                                          AS iui
-    FROM munyin_sensors s
-    JOIN munyin_tmd w ON DATE(s.ts) = DATE(w.ts)
-    JOIN munyin_aqi a ON DATE(s.ts) = DATE(a.ts)
-    ORDER BY s.ts DESC
+      c.iui
+    FROM munyin_computed c
+    JOIN munyin_sensors s ON c.ts = s.ts
+    JOIN munyin_tmd w ON DATE(c.ts) = DATE(w.ts)
+    JOIN munyin_aqi a ON DATE(c.ts) = DATE(a.ts)
+    ORDER BY c.ts DESC
     LIMIT 1
   `);
   return rows[0] || null;
@@ -62,36 +41,15 @@ async function getLatest() {
 async function getHistory(hours) {
   const [rows] = await pool.query(`
     SELECT
-      s.ts,
-      s.temperature,
-      s.humidity,
-      s.soil_moisture,
-      ROUND(
-        0.6108 * EXP((17.27 * s.temperature) / (s.temperature + 237.3))
-        * (1 - s.humidity / 100.0)
-      , 3)                                                          AS vpd,
-      ROUND((
-        0.6 * (1.0 - (s.soil_moisture / 100.0))
-        + 0.4 * LEAST(1.0,
-          (0.6108 * EXP((17.27 * s.temperature) / (s.temperature + 237.3))
-          * (1 - s.humidity / 100.0)) / 3.0
-        )
-      )
-      * GREATEST(0.0, LEAST(1.0,
-        CASE
-          WHEN w.Rainfall24Hr > 0
-            THEN 1.0 - LEAST(1.0, w.Rainfall24Hr / 20.0)
-          ELSE
-            (w.AirTemperature - w.DewPoint) / 10.0
-        END
-      ))
-      * LEAST(1.0, a.aqi / 200.0)
-      , 3)                                                          AS iui
-    FROM munyin_sensors s
-    JOIN munyin_tmd w ON DATE(s.ts) = DATE(w.ts)
-    JOIN munyin_aqi a ON DATE(s.ts) = DATE(a.ts)
-    WHERE s.ts >= (select ts from munyin_sensors order by ts desc limit 1) - INTERVAL ? HOUR
-    ORDER BY s.ts ASC
+      c.ts,
+      c.temperature,
+      c.humidity,
+      c.soil_moisture,
+      c.vpd,
+      c.iui
+    FROM munyin_computed c
+    WHERE c.ts >= (SELECT ts FROM munyin_computed ORDER BY ts DESC LIMIT 1) - INTERVAL ? HOUR
+    ORDER BY c.ts ASC
   `, [hours]);
   return rows;
 }
