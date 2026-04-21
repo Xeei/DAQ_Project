@@ -81,3 +81,8 @@ Node Red 1 hour interval → collect data from tmd.go.th (rain probability) and 
 | GET | `/api/latest` | Latest sensor + weather + AQI + computed metrics | — |
 | GET | `/api/history` | Historical sensor data | `?hours=24` |
 | GET | `/api/status` | Health check for all data sources | — |
+
+## Contributor
+- Phurinat Khrueatan 6710545849 (right one)
+- Sudha Sutaschuto 6710545920 (left one)
+<img width="500" height="700" alt="4C43A8B1-E8D7-4B51-8592-1DBBD7B015C1_1_105_c" src="https://github.com/user-attachments/assets/b66a630a-b65c-4e2e-9fda-528b8685fad7" />
